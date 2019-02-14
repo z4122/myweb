@@ -1,0 +1,2 @@
+/usr/bin/ar qc liblibserver.a  CMakeFiles/libserver.dir/epoll.cpp.o CMakeFiles/libserver.dir/ThreadPoll.cpp.o CMakeFiles/libserver.dir/eventloop.cpp.o CMakeFiles/libserver.dir/HandleRequest.cpp.o CMakeFiles/libserver.dir/Log.cpp.o CMakeFiles/libserver.dir/Timer.cpp.o
+/usr/bin/ranlib liblibserver.a

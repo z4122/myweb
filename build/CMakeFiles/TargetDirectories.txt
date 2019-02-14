@@ -1,0 +1,6 @@
+/home/yin/myweb/build/CMakeFiles/edit_cache.dir
+/home/yin/myweb/build/CMakeFiles/rebuild_cache.dir
+/home/yin/myweb/build/CMakeFiles/webserver.dir
+/home/yin/myweb/build/src/CMakeFiles/edit_cache.dir
+/home/yin/myweb/build/src/CMakeFiles/rebuild_cache.dir
+/home/yin/myweb/build/src/CMakeFiles/libserver.dir

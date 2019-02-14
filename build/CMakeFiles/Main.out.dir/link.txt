@@ -1,0 +1,1 @@
+/usr/bin/c++    -O0 -Wall -g -ggdb   CMakeFiles/Main.out.dir/main.cpp.o  -o Main.out -rdynamic 
