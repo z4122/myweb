@@ -83,13 +83,13 @@ void HandleRequest::addResource(){
         
         ifstream ifs;
         ifs.open(filename,ifstream::in);
-        cout<<"normal:"<<filename<<endl;
+        //cout<<"normal:"<<filename<<endl;
 
         if(ifs){
             ifs.seekg(0,ios::end);
             int length = ifs.tellg();
             ifs.seekg(0,ios::beg);
-            cout<<filename<<"   length:"<<length<<endl;
+            //cout<<filename<<"   length:"<<length<<endl;
             response<<"HTTP/1.1 200 OK\r\nContent-Length:"<<length<<"\r\n\r\n"<<ifs.rdbuf();
         }
         else{
@@ -194,7 +194,7 @@ void HandleRequest::Respond(ostream &response,Request &request){
         //逐个判断正则表达式
         for(auto re:resource[request.type]){
             regex e(re.first);
-            cout<<"正则表达式为:"<<re.first<<endl;
+            //cout<<"正则表达式为:"<<re.first<<endl;
             smatch match;
             if(regex_match(request.path,match,e)){
                 request.match=move(match);
@@ -208,7 +208,7 @@ void HandleRequest::Respond(ostream &response,Request &request){
     {
         for(auto re:default_resource[request.type]){
             regex e(re.first);
-            cout<<"正则表达式为:"<<re.first<<endl;
+            //cout<<"正则表达式为:"<<re.first<<endl;
             smatch match;
             if(regex_match(request.path,match,e)){
                 request.match=move(match);

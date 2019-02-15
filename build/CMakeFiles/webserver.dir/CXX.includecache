@@ -85,6 +85,8 @@ fcntl.h
 -
 string.h
 -
+sys/resource.h
+-
 sys/epoll.h
 -
 sys/socket.h

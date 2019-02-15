@@ -12,7 +12,16 @@ Epoll::Epoll(int num,Log *log):
     int port = 8080;
     struct sockaddr_in address;
     int ret;
-    
+    struct rlimit rt;
+
+    //设置每个进程允许打开的最大文件数，否则默认是1024
+    rt.rlim_max = rt.rlim_cur = 200000;
+    if (setrlimit(RLIMIT_NOFILE, &rt) == -1) 
+    {
+        perror("setrlimit error");
+    }
+
+
     bzero(&address,sizeof(address));
     address.sin_addr.s_addr = htons(INADDR_ANY);
     address.sin_family = AF_INET;
@@ -34,13 +43,13 @@ Epoll::Epoll(int num,Log *log):
     epollfd = epoll_create(num);
     assert(epollfd!=-1);
 
-    addFd(listenfd,true);//增加监听事件,true代表开启ET模式，false代表LT模式
+    addFd(listenfd,true,false);//增加监听事件,true代表开启ET模式，false代表LT模式
 
     log_timerfd = timer.addTimerEvery(3,0);
     connection_timerfd = timer.addTimerAfter(300000,0);
 
-    addFd(log_timerfd,true);
-    addFd(connection_timerfd,true);
+    addFd(log_timerfd,true,false);
+    addFd(connection_timerfd,true,false);
 
 }
 
@@ -60,14 +69,26 @@ int Epoll::setNonblocking(int eventfd){
 
 }
 
-void Epoll::addFd(int eventfd,bool isEt){
+void Epoll::resetOneshot(int eventfd){
+    epoll_event event;
+    event.data.fd = eventfd;
+    event.events = EPOLLIN|EPOLLET|EPOLLONESHOT;
+
+    epoll_ctl(epollfd,EPOLL_CTL_ADD,eventfd,&event);
+}
+
+void Epoll::addFd(int eventfd,bool isEt,bool isOneshot){
     epoll_event event;
     event.data.fd = eventfd;
     event.events = EPOLLIN;
     if(isEt){
         event.events|=EPOLLET;
     }
+    if(isOneshot){
+        event.events|=EPOLLONESHOT;
+    }
     epoll_ctl(epollfd,EPOLL_CTL_ADD,eventfd,&event);
+    setNonblocking(eventfd);
 }
 
 void Epoll::delFd(int eventfd){
@@ -88,8 +109,8 @@ void Epoll::Et(int eventnum){
             struct sockaddr_in client_address;
             socklen_t client_address_length = sizeof(client_address);
             int connfd = accept(listenfd,(struct sockaddr*)&client_address,&client_address_length);
-            cout<<"add a connection event:"<<connfd<<endl;
-            addFd(connfd,true);//加入事件到epollfd中，接着监听
+            cout<<"加入了连接fd为"<<connfd<<'\n';
+            addFd(connfd,true,false);//加入事件到epollfd中，接着监听
         }
         else if((events[i].data.fd == log_timerfd))//3s周期定时器事件
         {
@@ -113,7 +134,7 @@ void Epoll::Et(int eventnum){
                 if(timer.isHeapEmpty())
                     break;
             }
-            uint64_t exp;
+            //uint64_t exp;
             //必须有下面这句话，清空缓存，才能够继续触发log_timerfd
             //read(connection_timerfd,&exp,sizeof(uint64_t));
             if(!timer.isHeapEmpty())
@@ -122,9 +143,9 @@ void Epoll::Et(int eventnum){
         else if(events[i].events&EPOLLIN)//来到的事件是读事件
         {
             printf("receive once\n");
-            if(timer.isHeapEmpty())
-                timer.changeTimer(connection_timerfd,7,0,0,0);//7秒后触发一次定时中端。
-            timer.addHeapValue(events[i].data.fd);
+            //if(timer.isHeapEmpty())
+            //    timer.changeTimer(connection_timerfd,7,0,0,0);//7秒后触发一次定时中端。
+            //timer.addHeapValue(events[i].data.fd);
             threadpoll.addTask(bind(&Epoll::readTask,this,placeholders::_1),events[i].data.fd);
 
         }
@@ -143,15 +164,18 @@ void Epoll::readTask(int fd){
         //条件成立对于非阻塞IO来说，代表着数据已经读取完毕，下一次可以再次监听到EPOLLIN
             if(errno==EAGAIN||errno==EWOULDBLOCK){
                 printf("read later\n");
+                //resetOneshot(fd);
                 break;
             }
+            close(fd);
+            cout<<"关闭了1fd:"<<fd<<'\n';
+            delFd(fd);
         }
         else if(ret==0){//接受完毕数据
-            cout<<"关闭了fd:"<<fd<<endl;
-            log_->tagTime();
-            *log_<<"关闭了fd:"<<fd<<'\n';
+            cout<<"关闭了2fd:"<<fd<<endl;
             close(fd);
-            delFd(fd);
+            
+            //delFd(fd);
             break;
         }
         else{//正常接收到ret个字节
@@ -178,12 +202,15 @@ void Epoll::readTask(int fd){
 void Epoll::writeTask(int fd,string &buf){
     const char *content = buf.c_str();
     log_->tagTime();
-    *log_<<"fd为:"<<fd<<'\n';
+    *log_<<"通过fd发送了一次数据，fd为:"<<fd<<'\n';
     int ret = write(fd,content,buf.size()+1);
+    
     if(ret==-1){
-        cout<<"发送失败"<<endl;
+        log_->tagTime();
+        *log_<<"发送失败:"<<fd<<'\n';
     }
     else{
+        //shutdown(fd,SHUT_WR);// 之后服务器端会处于半关闭状态，客户端的ｒｅａｄ会收到一个０，然后发送一个ｆｉｎ给服务器。
         cout<<"发送成功,发送字节数为："<<ret<<endl;
     }
     

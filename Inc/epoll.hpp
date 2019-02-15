@@ -6,6 +6,7 @@
 #include<fcntl.h>
 #include<string.h>
 
+#include<sys/resource.h>
 #include<sys/epoll.h>
 #include<sys/socket.h>
 #include<sys/types.h>
@@ -28,9 +29,10 @@ public:
     
     void detectEvent();
     void Et(int num);
-    void addFd(int eventfd,bool isEt);
+    void addFd(int eventfd,bool isEt,bool isOneshot);
     void delFd(int eventfd);
     int  setNonblocking(int evnetfd);
+    void  resetOneshot(int eventfd);
     void readTask(int i);
     //写任务
     void writeTask(int i,string &buf);
